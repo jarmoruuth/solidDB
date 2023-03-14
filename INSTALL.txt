@@ -2,7 +2,7 @@
 How to Compile and Install the SolidDB 5.5 Plugin
 =================================================
 
-The SolidDB storage engine plugin is based on the Solid Database (Boost Engine) now owned by IBM.
+The SolidDB storage engine plugin is based on the Solid Database (Boost Engine) now owned by Unicom.
 SolidDB provides a fully ACID-compliant transactional storage engine offering different levels
 of transaction isolation. The multiversion concurrency control is achieved through a unique design
 known as a Bonsai Tree. 

@@ -1,0 +1,77 @@
+
+How to Compile and Install the SolidDB 5.5 Plugin
+=================================================
+
+The SolidDB storage engine plugin is based on the Solid Database (Boost Engine) now owned by IBM.
+SolidDB provides a fully ACID-compliant transactional storage engine offering different levels
+of transaction isolation. The multiversion concurrency control is achieved through a unique design
+known as a Bonsai Tree. 
+
+Advantages seen in SolidDB plugin include:
+
+* Fully multithreaded to scale across cpu's
+* Scales well with high concurrency loads
+* Hot backup available via MySQL commands
+* Cost-based optimizer builtin
+* On-the-fly debugging available
+
+1. Compile SolidDB Plugin
+
+This source package has been developed to run on all MySQL supported platforms including Linux,
+Solaris, Windows platforms, FreeBSD and Mac OS X. The method is the same for all platforms.
+
+1.1 Unarchiving the Source Tarball
+
+shell> cd /usr/local/src/mysql-5.5.17
+shell> tar xvf ~/Downloads/soliddb_5.5_plugin_source.tar.gz
+
+This will create a new storage engine directory called 'soliddb' in the main source tree.
+
+1.2 Create Make files
+
+Generate the platform specific make configuration.
+
+shell> cmake .
+
+1.3 Make and Install
+
+Compile the complete source and install.
+
+shell> make
+shell> sudo make install
+
+Then start the service.
+
+2. Installing the Plugin
+
+Once the source has been compiled and installed the plugin is available, but not yet loaded.
+To load the plugin, use the standard INSTALL PLUGIN command:
+
+mysql> INSTALL PLUGIN soliddb SONAME "ha_soliddb.so";
+
+The plugin also has INFORMATION_SCHEMA tables for added information. These need to be loaded
+from the main plugin using the following commands:
+
+mysql> INSTALL PLUGIN SOLIDDB_SYS_TABLES       SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_COLUMNS      SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_KEYS         SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_KEYPARTS     SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_COLUMNS_AUX  SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_KEYPARTS_AUX SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_FORKEYS      SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_FORKEYPARTS  SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_SCHEMAS      SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_SEQUENCES    SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_CARDINAL     SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_TABLEMODES   SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_INFO         SONAME "ha_soliddb.so";
+mysql> INSTALL PLUGIN SOLIDDB_SYS_BLOBS        SONAME "ha_soliddb.so";
+
+Note: The installation only needs to be done once and the system stores the details in the
+mysql.plugin table which MySQL loads each time the server starts.
+
+3. Testing the Plugin
+
+Check that the plugins have loaded without any issue:
+
+mysql> SHOW PLUGINS;

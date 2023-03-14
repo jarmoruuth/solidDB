@@ -1,0 +1,2 @@
+# solidDB
+ solidDB for MySQL

@@ -1,0 +1,1308 @@
+/*************************************************************************\
+**  source       * sschcvt.c
+**  directory    * ss
+**  description  * Character conversions
+**               * 
+**               * Copyright (C) 2006 Solid Information Technology Ltd
+\*************************************************************************/
+/*
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; only under version 2 of the License.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  USA
+*/
+
+#ifdef DOCUMENTATION
+**************************************************************************
+
+Implementation:
+--------------
+
+ANSI C ctype.h like character conversion tables for different character
+sets. Functions and tables to convert characters from one character set
+to another and some string comparison functions.
+
+Character class testing is supported for the following character sets:
+
+        7 bit scandinavian
+        dos
+
+Supported character set conversions are:
+
+        dos                 ->  iso
+        iso                 ->  dos
+        mac                 ->  iso
+        iso                 ->  mac
+        7 bit scandinavian  ->  iso
+        iso                 ->  7 bit scandinavian
+
+Explanations for acronyms:
+
+        dos                 IBM PC 8-bit character set
+        iso                 ISO character set
+        mac                 Apple Macintosh character set
+        7 bit scandinavian  7 bit scnadinavian character set where
+                            {}[]\| -characters are used for special
+                            scandinavian characters. Used e.g. in some
+                            Unix systems.
+
+Limitations:
+-----------
+
+Character class testing not for all character sets.
+
+Error handling:
+--------------
+
+None.
+
+Objects used:
+------------
+
+None.
+
+Preconditions:
+-------------
+
+None.
+
+Multithread considerations:
+--------------------------
+
+None.
+
+Example:
+-------
+
+
+**************************************************************************
+#endif /* DOCUMENTATION */
+
+#include "ssstring.h"     /* for strlen */
+#include "ssc.h"
+#include "ssstddef.h"
+#include "ssdebug.h"
+#include "sschcvt.h"
+
+/* These tables are for ISO extended ascii. */
+
+ss_byte_t ss_chtype[257]=
+{
+  0,								/* -1 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 0 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 4 */
+  CHTYPE_C,	CHTYPE_C|CHTYPE_S, CHTYPE_C|CHTYPE_S, CHTYPE_C|CHTYPE_S,/* 8 */
+  CHTYPE_C|CHTYPE_S, CHTYPE_C|CHTYPE_S,	CHTYPE_C,	CHTYPE_C,	/* 12 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 16 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 20 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 24 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 28 */
+  CHTYPE_B|CHTYPE_S, CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 32 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 36 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 40 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 44 */
+  CHTYPE_D,	CHTYPE_D,	CHTYPE_D,	CHTYPE_D,	/* 48 */
+  CHTYPE_D,	CHTYPE_D,	CHTYPE_D,	CHTYPE_D,	/* 52 */
+  CHTYPE_D,	CHTYPE_D,	CHTYPE_P,	CHTYPE_P,	/* 56 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 60 */
+  CHTYPE_P,	CHTYPE_U|CHTYPE_X, CHTYPE_U|CHTYPE_X, CHTYPE_U|CHTYPE_X,/* 64 */
+  CHTYPE_U|CHTYPE_X, CHTYPE_U|CHTYPE_X, CHTYPE_U|CHTYPE_X, CHTYPE_U,/* 68 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 72 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 76 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 80 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 84 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_P,	/* 88 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 92 */
+  CHTYPE_P,	CHTYPE_L|CHTYPE_X,	CHTYPE_L|CHTYPE_X,	CHTYPE_L|CHTYPE_X,	/* 96 */
+  CHTYPE_L|CHTYPE_X,	CHTYPE_L|CHTYPE_X,	CHTYPE_L|CHTYPE_X,	CHTYPE_L,	/* 100 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 104 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 108 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 112 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 116 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_P,	/* 120 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_C,	/* 124 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 128 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 132 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 136 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 140 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 144 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 148 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 152 */
+  CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	CHTYPE_C,	/* 156 */
+  CHTYPE_C,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 160 */
+  CHTYPE_P,	CHTYPE_P,/*?*/	CHTYPE_P,/*?*/	CHTYPE_P,	/* 164 */
+  CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	CHTYPE_P,	/* 168 */
+  CHTYPE_P,/*?*/CHTYPE_P,/*?*/	CHTYPE_P,	CHTYPE_P,	/* 172 */
+  CHTYPE_P,	CHTYPE_P,/*?*/	CHTYPE_P,/*?*/	CHTYPE_P,/*?*/	/* 176 */
+  CHTYPE_P,	CHTYPE_P,/*?*/	CHTYPE_P,	CHTYPE_P,	/* 180 */
+  CHTYPE_P,	CHTYPE_P,/*?*/	CHTYPE_P,	CHTYPE_P,	/* 184 */
+  CHTYPE_P,/*?*/CHTYPE_P,/*?*/	CHTYPE_P,/*?*/	CHTYPE_P,	/* 188 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 192 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 196 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 200 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 204 */
+  CHTYPE_P,/*?*/CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 208 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_P,/*?*/	/* 212 */
+  CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	CHTYPE_U,	/* 216 */
+  CHTYPE_U,	CHTYPE_P,/*?*/	CHTYPE_P,/*?*/	CHTYPE_L,	/* 220 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 224 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 228 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 232 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 236 */
+  CHTYPE_P,/*?*/CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 240 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_P,/*?*/	/* 244 */
+  CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	CHTYPE_L,	/* 248 */
+  CHTYPE_L,	CHTYPE_P,/*?*/	CHTYPE_P,/*?*/	CHTYPE_L	/* 252 */
+};
+
+ss_byte_t ss_chtolower[256]=
+{
+  0,		1,		2,		3,	/* 0 */
+  4,		5,		6,		7,	/* 4 */
+  8,		9,		10,		11,	/* 8 */
+  12,		13,		14,		15,	/* 12 */
+  16,		17,		18,		19,	/* 16 */
+  20,		21,		22,		23,	/* 20 */
+  24,		25,		26,		27,	/* 24 */
+  28,		29,		30,		31,	/* 28 */
+  32,		33,		34,		35,	/* 32 */
+  36,		37,		38,		39,	/* 36 */
+  40,		41,		42,		43,	/* 40 */
+  44,		45,		46,		47,	/* 44 */
+  48,		49,		50,		51,	/* 48 */
+  52,		53,		54,		55,	/* 52 */
+  56,		57,		58,		59,	/* 56 */
+  60,		61,		62,		63,	/* 60 */
+  64,		'a',		'b',		'c',	/* 64 */
+  'd',		'e',		'f',		'g',	/* 68 */
+  'h',		'i',		'j',		'k',	/* 72 */
+  'l',		'm',		'n',		'o',	/* 76 */
+  'p',		'q',		'r',		's',	/* 80 */
+  't',		'u',		'v',		'w',	/* 84 */
+  'x',		'y',		'z',		91,	/* 88 */
+  92,		93,		94,		95,	/* 92 */
+  96,		'a',		'b',		'c',	/* 96 */
+  'd',		'e',		'f',		'g',	/* 100 */
+  'h',		'i',		'j',		'k',	/* 104 */
+  'l',		'm',		'n',		'o',	/* 108 */
+  'p',		'q',		'r',		's',	/* 112 */
+  't',		'u',		'v',		'w',	/* 116 */
+  'x',		'y',		'z',		123,	/* 120 */
+  124,		125,		126,		127,	/* 124 */
+  0x80,		0x81,		0x82,		0x83,
+  0x84,		0x85,		0x86,		0x87,		
+  0x88,		0x89,		0x8a,		0x8b,		
+  0x8c,		0x8d,		0x8e,		0x8f,		
+  0x90,		0x91,		0x92,		0x93,		
+  0x94,		0x95,		0x96,		0x97,		
+  0x98,		0x99,		0x9a,		0x9b,		
+  0x9c,		0x9d,		0x9e,		0x9f,		
+  0xa0,		0xa1,		0xa2,		0xa3,		
+  0xa4,		0xa5,		0xa6,		0xa7,		
+  0xa8,		0xa9,		0xaa,		0xab,		
+  0xac,		0xad,		0xae,		0xaf,		
+  0xb0,		0xb1,		0xb2,		0xb3,
+  0xb4,		0xb5,		0xb6,		0xb7,
+  0xb8,		0xb9,		0xba,		0xbb,
+  0xbc,		0xbd,		0xbe,		0xbf,
+  0xe0,		0xe1,		0xe2,		0xe3, /* 0xc0 */
+  0xe4,		0xe5,		0xe6,		0xe7, /* 0xc4 */
+  0xe8,		0xe9,		0xea,		0xeb, /* 0xc8 */
+  0xec,		0xed,		0xee,		0xef, /* 0xcc */
+  0xd0,		0xf1,		0xf2,		0xf3,		
+  0xf4,		0xf5,		0xf6,		0xd7, /* 0xd4 */
+  0xf8,		0xf9,		0xfa,		0xfb, /* 0xd8 */
+  0xfc,		0xdd,		0xde,		0xdf, /* 0xdc */
+  0xe0,		0xe1,		0xe2,		0xe3,
+  0xe4,		0xe5,		0xe6,		0xe7,		
+  0xe8,		0xe9,		0xea,		0xeb,		
+  0xec,		0xed,		0xee,		0xef,		
+  0xf0,		0xf1,		0xf2,		0xf3,		
+  0xf4,		0xf5,		0xf6,		0xf7,		
+  0xf8,		0xf9,		0xfa,		0xfb,		
+  0xfc,		0xfd,		0xfe,		0xff
+};
+
+ss_byte_t ss_chtoupper[256]=
+{
+  0,		1,		2,		3,	/* 0 */
+  4,		5,		6,		7,	/* 4 */
+  8,		9,		10,		11,	/* 8 */
+  12,		13,		14,		15,	/* 12 */
+  16,		17,		18,		19,	/* 16 */
+  20,		21,		22,		23,	/* 20 */
+  24,		25,		26,		27,	/* 24 */
+  28,		29,		30,		31,	/* 28 */
+  32,		33,		34,		35,	/* 32 */
+  36,		37,		38,		39,	/* 36 */
+  40,		41,		42,		43,	/* 40 */
+  44,		45,		46,		47,	/* 44 */
+  48,		49,		50,		51,	/* 48 */
+  52,		53,		54,		55,	/* 52 */
+  56,		57,		58,		59,	/* 56 */
+  60,		61,		62,		63,	/* 60 */
+  64,		'A',		'B',		'C',	/* 64 */
+  'D',		'E',		'F',		'G',	/* 68 */
+  'H',		'I',		'J',		'K',	/* 72 */
+  'L',		'M',		'N',		'O',	/* 76 */
+  'P',		'Q',		'R',		'S',	/* 80 */
+  'T',		'U',		'V',		'W',	/* 84 */
+  'X',		'Y',		'Z',		91,	/* 88 */
+  92,		93,		94,		95,	/* 92 */
+  96,		'A',		'B',		'C',	/* 96 */
+  'D',		'E',		'F',		'G',	/* 100 */
+  'H',		'I',		'J',		'K',	/* 104 */
+  'L',		'M',		'N',		'O',	/* 108 */
+  'P',		'Q',		'R',		'S',	/* 112 */
+  'T',		'U',		'V',		'W',	/* 116 */
+  'X',		'Y',		'Z',		123,	/* 120 */
+  124,		125,		126,		127,	/* 124 */
+  0x80,		0x81,		0x82,		0x83,
+  0x84,		0x85,		0x86,		0x87,		
+  0x88,		0x89,		0x8a,		0x8b,		
+  0x8c,		0x8d,		0x8e,		0x8f,		
+  0x90,		0x91,		0x92,		0x93,		
+  0x94,		0x95,		0x96,		0x97,		
+  0x98,		0x99,		0x9a,		0x9b,		
+  0x9c,		0x9d,		0x9e,		0x9f,		
+  0xa0,		0xa1,		0xa2,		0xa3,		
+  0xa4,		0xa5,		0xa6,		0xa7,		
+  0xa8,		0xa9,		0xaa,		0xab,		
+  0xac,		0xad,		0xae,		0xaf,		
+  0xb0,		0xb1,		0xb2,		0xb3,
+  0xb4,		0xb5,		0xb6,		0xb7,
+  0xb8,		0xb9,		0xba,		0xbb,
+  0xbc,		0xbd,		0xbe,		0xbf,
+  0xc0,		0xc1,		0xc2,		0xc3,
+  0xc4,		0xc5,		0xc6,		0xc7,
+  0xc8,		0xc9,		0xca,		0xcb,
+  0xcc,		0xcd,		0xce,		0xcf,
+  0xd0,		0xd1,		0xd2,		0xd3,
+  0xd4,		0xd5,		0xd6,		0xd7,
+  0xd8,		0xd9,		0xda,		0xdb,
+  0xdc,		0xdd,		0xde,		0xdf,
+  0xc0,		0xc1,		0xc2,		0xc3, /* 0xe0 */
+  0xc4,		0xc5,		0xc6,		0xc7, /* 0xe4 */
+  0xc8,		0xc9,		0xca,		0xcb, /* 0xe8 */
+  0xcc,		0xcd,		0xce,		0xcf, /* 0xec */
+  0xf0,		0xd1,		0xd2,		0xd3, /* 0xf0 */
+  0xd4,		0xd5,		0xd6,		0xf7, /* 0xf4 */
+  0xd8,		0xd9,		0xda,		0xdb, /* 0xf8 */
+  0xdc,		0xfd,		0xfe,		0xff /* 0xfc */
+};
+
+ss_byte_t ss_chtable_dos2iso[256] = {
+/*00*/  0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+/*08*/  0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,
+/*10*/  0x10,0x11,0x12,0x13,0x14,0xA7,0x16,0x17,
+/*18*/  0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,
+/*20*/  0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,
+/*28*/  0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,
+/*30*/  0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37,
+/*38*/  0x38,0x39,0x3A,0x3B,0x3C,0x3D,0x3E,0x3F,
+/*40*/  0x40,0x41,0x42,0x43,0x44,0x45,0x46,0x47,
+/*48*/  0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F,
+/*50*/  0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57,
+/*58*/  0x58,0x59,0x5A,0x5B,0x5C,0x5D,0x5E,0x5F,
+/*60*/  0x60,0x61,0x62,0x63,0x64,0x65,0x66,0x67,
+/*68*/  0x68,0x69,0x6A,0x6B,0x6C,0x6D,0x6E,0x6F,
+/*70*/  0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77,
+/*78*/  0x78,0x79,0x7A,0x7B,0x7C,0x7D,0x7E,0x7F,
+/*80*/  0xC7,0xFC,0xE9,0xE2,0xE4,0xE0,0xE5,0xE7,
+/*88*/  0xEA,0xEB,0xE8,0xEF,0xEE,0xEC,0xC4,0xC5,
+/*90*/  0xC9,0xE6,0xC6,0xF4,0xF6,0xF2,0xFB,0xF9,
+/*98*/  0xFF,0xD6,0xDC,0xA2,0xA3,0xA5,0x15,0x9F,
+/*A0*/  0xE1,0xED,0xF3,0xFA,0xF1,0xD1,0xAA,0xBA,
+/*A8*/  0xBF,0xA9,0xAC,0xBD,0xBC,0xA1,0xAB,0xBB,
+/*B0*/  0x80,0x81,0x82,0xB3,0xB4,0x83,0xB6,0x84,
+/*B8*/  0xB8,0xB9,0x85,0x86,0x87,0x88,0xBE,0x89,
+/*C0*/  0xC0,0xC1,0xC2,0xC3,0x8A,0x8B,0x8C,0x8D,
+/*C8*/  0xC8,0x8E,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,
+/*D0*/  0xD0,0x8F,0xD2,0xD3,0xD4,0xD5,0x90,0xD7,
+/*D8*/  0xD8,0xD9,0xDA,0xDB,0x91,0xDD,0xDE,0xDF,
+/*E0*/  0x92,0x93,0x94,0xE3,0x95,0x96,0xB5,0x97,
+/*E8*/  0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0xA0,
+/*F0*/  0xF0,0xB1,0xA4,0xA6,0xA8,0xF5,0xF7,0xAD,
+/*F8*/  0xB0,0xB7,0xAE,0xAF,0xF8,0xB2,0xFE,0xFD
+};
+ss_byte_t ss_chtable_iso2dos[256] = {
+/*00*/  0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+/*08*/  0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,
+/*10*/  0x10,0x11,0x12,0x13,0x14,0x9E,0x16,0x17,
+/*18*/  0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,
+/*20*/  0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,
+/*28*/  0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,
+/*30*/  0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37,
+/*38*/  0x38,0x39,0x3A,0x3B,0x3C,0x3D,0x3E,0x3F,
+/*40*/  0x40,0x41,0x42,0x43,0x44,0x45,0x46,0x47,
+/*48*/  0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F,
+/*50*/  0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57,
+/*58*/  0x58,0x59,0x5A,0x5B,0x5C,0x5D,0x5E,0x5F,
+/*60*/  0x60,0x61,0x62,0x63,0x64,0x65,0x66,0x67,
+/*68*/  0x68,0x69,0x6A,0x6B,0x6C,0x6D,0x6E,0x6F,
+/*70*/  0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77,
+/*78*/  0x78,0x79,0x7A,0x7B,0x7C,0x7D,0x7E,0x7F,
+/*80*/  0xB0,0xB1,0xB2,0xB5,0xB7,0xBA,0xBB,0xBC,
+/*88*/  0xBD,0xBF,0xC4,0xC5,0xC6,0xC7,0xC9,0xD1,
+/*90*/  0xD6,0xDC,0xE0,0xE1,0xE2,0xE4,0xE5,0xE7,
+/*98*/  0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0x9F,
+/*A0*/  0xEF,0xAD,0x9B,0x9C,0xF2,0x9D,0xF3,0x15,
+/*A8*/  0xF4,0xA9,0xA6,0xAE,0xAA,0xF7,0xFA,0xFB,
+/*B0*/  0xF8,0xF1,0xFD,0xB3,0xB4,0xE6,0xB6,0xF9,
+/*B8*/  0xB8,0xB9,0xA7,0xAF,0xAC,0xAB,0xBE,0xA8,
+/*C0*/  0xC0,0xC1,0xC2,0xC3,0x8E,0x8F,0x92,0x80,
+/*C8*/  0xC8,0x90,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,
+/*D0*/  0xD0,0xA5,0xD2,0xD3,0xD4,0xD5,0x99,0xD7,
+/*D8*/  0xD8,0xD9,0xDA,0xDB,0x9A,0xDD,0xDE,0xDF,
+/*E0*/  0x85,0xA0,0x83,0xE3,0x84,0x86,0x91,0x87,
+/*E8*/  0x8A,0x82,0x88,0x89,0x8D,0xA1,0x8C,0x8B,
+/*F0*/  0xF0,0xA4,0x95,0xA2,0x93,0xF5,0x94,0xF6,
+/*F8*/  0xFC,0x97,0xA3,0x96,0x81,0xFF,0xFE,0x98
+};
+
+ss_byte_t ss_chtable_mac2iso[256] = {
+  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 
+  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 
+  0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 
+  0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 
+  0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 
+  0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 
+  0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 
+  0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 
+  0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 
+  0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 
+  0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 
+  0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f, 
+  0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 
+  0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f, 
+  0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 
+  0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 
+  0xc4, 0xc5, 0xc7, 0xc9, 0xd1, 0xd6, 0xdc, 0xe1, /* 0x80 */
+  0xe0, 0xe2, 0xe4, 0xe3, 0xe5, 0xe7, 0xe9, 0xe8, /* 0x88 */
+  0xea, 0xeb, 0xed, 0xec, 0xee, 0xef, 0xf1, 0xf3, /* 0x90 */
+  0xf2, 0xf4, 0xf6, 0xf5, 0xfa, 0xf9, 0xfb, 0xfc, /* 0x98 */
+  0x00, 0xb0, 0xa2, 0xa3, 0xa7, 0xb7, 0xb6, 0xdf, /* 0xa0 */
+  0xae, 0xa9, 0x00, 0xb4, 0x00, 0x00, 0xc6, 0xd8, /* 0xa8 */
+  0x00, 0x00, 0x00, 0x00, 0xa5, 0x00, 0x00, 0x00, /* 0xb0 */
+  0x00, 0x00, 0x00, 0x00, 0xba, 0x00, 0xe6, 0xf8, /* 0xb8 */
+  0xbf, 0xa1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* 0xc0 */
+  0x00, 0x00, 0x00, 0xc0, 0xc3, 0xd5, 0x00, 0x00, /* 0xc8 */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* 0xd0 */
+  0xff, 0x00, 0x00, 0xa4, 0x00, 0x00, 0x00, 0x00, /* 0xd8 */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0xc2, 0xca, 0xc1, /* 0xe0 */
+  0xcb, 0xc8, 0xcd, 0xce, 0xcf, 0xcc, 0xd3, 0xd4, /* 0xe8 */
+  0x00, 0xd2, 0xda, 0xdb, 0xd9, 0x00, 0x00, 0x00, /* 0xf0 */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfe, 0x00, /* 0xf8 */
+};
+
+ss_byte_t ss_chtable_iso2mac[256] = {
+  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+  0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+  0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+  0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+  0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+  0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+  0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+  0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+  0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+  0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+  0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+  0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+  0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+  0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+  0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0xc1, 0xa2, 0xa3, 0xdb, 0xb4, 0x00, 0xa4,
+  0x00, 0xa9, 0x00, 0x00, 0x00, 0x00, 0xa8, 0x00,
+  0xa1, 0x00, 0x00, 0x00, 0xab, 0x00, 0xa6, 0xa5,
+  0x00, 0x00, 0xbc, 0x00, 0x00, 0x00, 0x00, 0xc0,
+  0xcb, 0xe7, 0xe5, 0xcc, 0x80, 0x81, 0xae, 0x82,
+  0xe9, 0x83, 0xe6, 0xe8, 0xed, 0xea, 0xeb, 0xec,
+  0x00, 0x84, 0xf1, 0xee, 0xef, 0xcd, 0x85, 0x00,
+  0xaf, 0xf4, 0xf2, 0xf3, 0x86, 0x00, 0x00, 0xa7,
+  0x88, 0x87, 0x89, 0x8b, 0x8a, 0x8c, 0xbe, 0x8d,
+  0x8f, 0x8e, 0x90, 0x91, 0x93, 0x92, 0x94, 0x95,
+  0x00, 0x96, 0x98, 0x97, 0x99, 0x9b, 0x9a, 0x00,
+  0xbf, 0x9d, 0x9c, 0x9e, 0x9f, 0x00, 0xfe, 0xd8,
+};
+
+#if (defined(UNIX) && !defined(SS_SOLARIS)) 
+#define SS_CHCVT_DEF_7BITSCAND
+#endif /* 7 bit scand is default */
+
+#ifdef SS_CHCVT_DEF_7BITSCAND
+
+ss_byte_t ss_chtable_7bitscand2iso[256] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+        0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+        0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+        0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+        0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+        0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+        0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+        0x58, 0x59, 0x5A, 0xC4, 0xD6, 0xC5, 0x5E, 0x5F,
+        0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+        0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
+        0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+        0x78, 0x79, 0x7A, 0xE4, 0xF6, 0xE5, 0x7E, 0x7F,
+        0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+        0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
+        0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+        0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F,
+        0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
+        0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF,
+        0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7,
+        0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+        0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7,
+        0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF,
+        0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7,
+        0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
+        0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7,
+        0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
+        0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
+        0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
+};
+
+ss_byte_t ss_chtable_iso27bitscand[256] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+        0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+        0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+        0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+        0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+        0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+        0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+        0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
+        0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
+        0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
+        0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77,
+        0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F,
+        0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+        0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
+        0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+        0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F,
+        0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
+        0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF,
+        0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7,
+        0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+        0xC0, 0xC1, 0xC2, 0xC3, 0x5B, 0x5D, 0xC6, 0xC7,
+        0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF,
+        0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0x5C, 0xD7,
+        0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
+        0xE0, 0xE1, 0xE2, 0xE3, 0x7B, 0x7D, 0xE6, 0xE7,
+        0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
+        0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0x7C, 0xF7,
+        0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
+};
+
+#else /* SS_CHCVT_DEF_7BITSCAND */
+
+struct SsChPair {
+  ss_byte_t sevenbit, iso;
+};
+static struct SsChPair ss_chtable_7bitscand2iso[] = {
+  {'\133', 0xc4}, /* é */
+  {'\134', 0xd6}, /* ô */
+  {'\135', 0xc5}, /* è */
+  {'\173', 0xe4}, /* Ñ */
+  {'\174', 0xf6}, /* î */
+  {'\175', 0xe5}, /* Ü */
+  {0, 0} /* what about @ ` ^ ~... */
+};
+
+#endif  /* SS_CHCVT_DEF_7BITSCAND */
+
+/* Setting the default translations needs conditional compilation */
+#if defined(SS_CHCVT_DEF_7BITSCAND)
+
+ss_byte_t* ss_chtable_def2iso = ss_chtable_7bitscand2iso;
+ss_byte_t* ss_chtable_iso2def = ss_chtable_iso27bitscand;
+
+#elif defined(DOS)
+
+ss_byte_t* ss_chtable_def2iso = ss_chtable_dos2iso;
+ss_byte_t* ss_chtable_iso2def = ss_chtable_iso2dos;
+
+#elif defined(SS_WIN) || defined(SS_NT) || defined(SS_SOLARIS) || defined(SS_UNICODE_DATA)
+
+ss_byte_t* ss_chtable_def2iso = NULL;
+ss_byte_t* ss_chtable_iso2def = NULL;
+
+#else
+
+#error Default character conversion for this environment is not known!
+
+#endif
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso2Fin
+ * 
+ * Swaps a few characters From ISO charset so that the finnish alphabet
+ * have correct collation sequence. (Still, foreign letters eg. accented
+ * e or u-umlaut or W which are common in finnish surnames do not collate
+ * corrrectly). This function also converts backwards, because all
+ * translations are swaps.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		input character
+ *		
+ * Return value :
+ *      translated character
+ * 
+ * Comments : 
+ * 
+ * Globals used : 
+ * 
+ * See also : 
+ */
+int SsChCvtIso2Fin(ch)
+int ch;
+{
+        switch ((int)(ss_byte_t)ch) {
+            case '[':   return (0xC5);  /* è (The swedish O)    */
+            case '\\':  return (0xC4);  /* é (The A-umlaut)     */
+            case ']':   return (0xD6);  /* ô (The O-umlaut)     */
+            case '{':   return (0xE5);  /* Ü (The swedish o)    */
+            case '|':   return (0xE4);  /* Ñ (The a-umlaut)     */
+            case '}':   return (0xF6);  /* î (The o-umlaut)     */
+            case 0xC5:  return ('[');
+            case 0xC4:  return ('\\');
+            case 0xD6:  return (']');
+            case 0xE5:  return ('{');
+            case 0xE4:  return ('|');
+            case 0xF6:  return ('}');
+            default:    return ((ss_byte_t)ch);
+        }
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtDos2Iso
+ * 
+ * Converts character from IBM PC character set to ISO character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvtDos2Iso(ch)
+int ch;
+{
+  return ss_chtable_dos2iso[(ss_byte_t)ch];
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso2Dos
+ * 
+ * Converts character from ISO character set to IBM PC character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvtIso2Dos(ch)
+int ch;
+{
+  return ss_chtable_iso2dos[(ss_byte_t)ch];
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtMac2Iso
+ * 
+ * Converts character from Macintosh character set to ISO character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvtMac2Iso(ch)
+int ch;
+{
+  return ss_chtable_mac2iso[(ss_byte_t)ch];
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso2Mac
+ * 
+ * Converts character from ISO character set to Macintosh character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvtIso2Mac(ch)
+int ch;
+{
+  return ss_chtable_iso2mac[(ss_byte_t)ch];
+}
+
+#if defined(SS_CHCVT_DEF_7BITSCAND)
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvt7bitscand2Iso
+ * 
+ * Converts character from 7 bit scandinavian character set to ISO
+ * character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvt7bitscand2Iso(ch)
+int ch;
+{
+        return (ss_chtable_7bitscand2iso[(ss_byte_t)ch]);
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso27bitscand
+ * 
+ * Converts character from ISO character set to 7 bit scandinavian
+ * character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvtIso27bitscand(ch)
+int ch;
+{
+        return (ss_chtable_iso27bitscand[(ss_byte_t)ch]);
+}
+
+#else /* SS_CHCVT_DEF_7BITSCAND */
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvt7bitscand2Iso
+ * 
+ * Converts character from 7 bit scandinavian character set to ISO
+ * character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvt7bitscand2Iso(ch)
+        int ch;
+{
+  int i;
+
+        for (i = 0; ss_chtable_7bitscand2iso[i].sevenbit && 
+            ss_chtable_7bitscand2iso[i].sevenbit != (ss_byte_t)ch; i++)
+        {;}
+        if (ss_chtable_7bitscand2iso[i].sevenbit)
+            return ss_chtable_7bitscand2iso[i].iso;
+        return ch;
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso27bitscand
+ * 
+ * Converts character from ISO character set to 7 bit scandinavian
+ * character set.
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		Character that is converted.
+ *		
+ * Return value : 
+ * 
+ *      Converted character.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsChCvtIso27bitscand(ch)
+        int ch;
+{
+        int i;
+
+        for (i = 0; ss_chtable_7bitscand2iso[i].sevenbit &&
+            ss_chtable_7bitscand2iso[i].iso != (ss_byte_t)ch; i++)
+        {;}
+        if (ss_chtable_7bitscand2iso[i].sevenbit)
+            return ss_chtable_7bitscand2iso[i].sevenbit;
+        return (int)((ss_byte_t)ch);
+}
+
+#endif /* SS_CHCVT_DEF_7BITSCAND */
+
+/*##**********************************************************************\
+ * 
+ *		SsStrupr
+ * 
+ * Replacement for strupr. Converts a string to upper case.
+ * 
+ * Parameters : 
+ * 
+ *	s - in out, use
+ *		String that is converted.
+ *		
+ * Return value : 
+ * 
+ *      The converted string s.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+ss_char1_t* SsStrupr(s)
+ss_char1_t *s;
+{
+  register ss_char1_t *st = s;
+
+  for (; *st; st++)
+    *st = ss_toupper(*st);
+  return s;
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsStrlwr
+ * 
+ * Replacement for strlwr. Converts a string to lower case.
+ * 
+ * Parameters : 
+ * 
+ *	s - in out, use
+ *		String that is converted.
+ *		
+ * Return value : 
+ * 
+ *      The converted string s.
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+ss_char1_t* SsStrlwr(s)
+ss_char1_t* s;
+{
+  register ss_char1_t* st = s;
+
+  for (; *st; st++)
+    *st = ss_tolower(*st);
+  return s;
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsStricmp
+ * 
+ * Replacement for stricmp. Compares two strings ignoring the case.
+ * 
+ * Parameters : 
+ * 
+ *	s1 - in, use
+ *		String 1.
+ *		
+ *	s2 - in, use
+ *		String 2.
+ *		
+ * Return value : 
+ * 
+ *      -1, if s1 < s2
+ *       0, if s1 == s2
+ *       1, if s1 > s2
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsStricmp(s1, s2)
+const ss_char1_t *s1, *s2;
+{
+  register int temp;
+
+  for (; ((temp = ss_toupper(*s1) - ss_toupper(*s2)), temp == 0) && *s1; s1++, s2++)
+    {;}
+  if (temp == 0) return 0;
+  if ((temp > 0) ||
+      ((ss_byte_t)ss_toupper(*s1) == 0xc4 &&
+       (ss_byte_t)ss_toupper(*s2) == 0xc5) || /* é and è */
+      ((ss_byte_t)ss_toupper(*s1) == 0xe4 &&
+       (ss_byte_t)ss_toupper(*s2) == 0xe5)) /* Ñ and Ü */
+    return 1;
+  return -1;
+}
+
+
+/*##**********************************************************************\
+ * 
+ *		SsStrnicmp
+ * 
+ * Replacement for strnicmp. Compares two strings ignoring the case up to
+ * len bytes.
+ * 
+ * Parameters : 
+ * 
+ *	s1 - in, use
+ *		String 1.
+ *		
+ *	s2 - in, use
+ *		String 2.
+ *		
+ *	len - in
+ *		Maximum length for comparison.
+ *		
+ * Return value : 
+ * 
+ *      -1, if s1 < s2
+ *       0, if s1 == s2
+ *       1, if s1 > s2
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsStrnicmp(s1, s2, len)
+const ss_char1_t *s1, *s2;
+register size_t len;
+{
+  size_t len1;
+  register int temp;
+
+  len1 = strlen(s1);
+  if (len > len1)
+    len = len1 + 1;
+  if (len == 0) return 0;
+  for (; ((temp = ss_toupper(*s1) - ss_toupper(*s2)), temp == 0) && len;
+       s1++, s2++, len--)
+    {;}
+  if (len == 0 || temp == 0) return 0;
+  if ((temp > 0) ||
+      ((ss_byte_t)ss_toupper(*s1) == 0xc4 && 
+       (ss_byte_t)ss_toupper(*s2) == 0xc5) || /* é and è */
+      ((ss_byte_t)ss_toupper(*s1) == 0xe4 &&
+       (ss_byte_t)ss_toupper(*s2) == 0xe5)) /* Ñ and Ü */
+    return 1;
+  return -1;
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsStrcmp
+ * 
+ * Replacement for strcmp. Compares two strings.
+ * 
+ * Parameters : 
+ * 
+ *	s1 - in, use
+ *		String 1.
+ *		
+ *	s2 - in, use
+ *		String 2.
+ *		
+ * Return value : 
+ * 
+ *      -1, if s1 < s2
+ *       0, if s1 == s2
+ *       1, if s1 > s2
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsStrcmp(s1, s2)
+const ss_char1_t *s1, *s2;
+{
+  register int temp;
+
+  for (; ((temp = *s1 - *s2), temp == 0) && *s1; s1++, s2++)
+    {;}
+  if (temp == 0)
+    return 0;
+  if ((temp > 0) ||
+      ((ss_byte_t)*s1 == 0xc4 &&
+       (ss_byte_t)*s2 == 0xc5) || /* é and è */
+      ((ss_byte_t)*s1 == 0xe4 &&
+       (ss_byte_t)*s2 == 0xe5)) /* Ñ and Ü */
+    return 1;
+  return -1;
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsStrncmp
+ * 
+ * Replacement for strncmp. Compares two strings up to len bytes.
+ * 
+ * Parameters : 
+ * 
+ *	s1 - in, use
+ *		String 1.
+ *		
+ *	s2 - in, use
+ *		String 2.
+ *		
+ *	len - in
+ *		Maximum length for comparison.
+ *		
+ * Return value : 
+ * 
+ *      -1, if s1 < s2
+ *       0, if s1 == s2
+ *       1, if s1 > s2
+ * 
+ * Limitations  : 
+ * 
+ * Globals used : 
+ */
+int SsStrncmp(s1, s2, len)
+const ss_char1_t *s1, *s2;
+register size_t len;
+{
+  size_t len1;
+  register int temp;
+
+  len1 = strlen(s1);
+  if (len > len1)
+    len = len1 + 1;
+  if (len == 0) return 0;
+  for (; ((temp = *s1 - *s2), temp == 0) && len;
+       s1++, s2++, len--)
+    {;}
+  if (len == 0 || temp == 0) return 0;
+  if ((temp > 0) ||
+      ((ss_byte_t)*s1 == 0xc4 &&
+       (ss_byte_t)*s2 == 0xc5) || /* é and è */
+      ((ss_byte_t)*s1 == 0xe4 &&
+       (ss_byte_t)*s2 == 0xe5)) /* Ñ and Ü */
+    return 1;
+  return -1;
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsStristr
+ * 
+ * Same as library routine strstr() but this makes a case
+ * insensitive match (based on ISO ISO 8859-1)
+ * 
+ * Parameters : 
+ * 
+ *	src - string where the search is done
+ *		
+ *		
+ *	pat - search pattern string
+ *		
+ *		
+ * Return value :
+ *      NULL when search pattern not found
+ *      src when search pattern is empty string ("")
+ *      src + offset when the search pattern is found at offset
+ * 
+ * Comments :
+ *      brute force search O(M*N)
+ * 
+ * Globals used : 
+ * 
+ * See also : 
+ */
+char* SsStristr(const char* src, const char* pat)
+{
+        ss_byte_t c;
+        ss_byte_t* pp;
+        ss_byte_t* sp;
+
+        if (src == NULL || pat == NULL) {
+            return (NULL);
+        }
+        pp = (ss_byte_t*)pat;
+        sp = (ss_byte_t*)src;
+        c = (ss_byte_t)ss_toupper(*pp);
+        if (c == '\0') {
+            return ((char *)src);
+        }
+        for ( ;*sp != '\0'; sp++) {
+            if (c == ss_toupper(*sp)) {
+                ss_byte_t* pp1;
+                ss_byte_t* sp1;
+                for  (pp1 = pp + 1, sp1 = sp + 1; ; pp1++, sp1++) {
+                    if (*pp1 == '\0') {
+                        return ((char*)sp);
+                    }
+                    if (ss_toupper(*pp1) != ss_toupper(*sp1)) {
+                        break;
+                    }
+                }
+            }
+        }
+        return (NULL);
+}
+
+#if defined(WINDOWS) || defined(SS_NT) || defined(SS_SOLARIS)
+/* ISO is the default char set in windows */
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtDef2Iso
+ * 
+ * System dependent default translation to ISO
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *          the character
+ *		
+ *		
+ * Return value :
+ *      translated character
+ * 
+ * Comments : 
+ * 
+ * Globals used : 
+ * 
+ * See also : 
+ */
+int SsChCvtDef2Iso(ch)
+	int ch;
+{
+        return (ch);
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso2Def
+ * 
+ * System dependent default translation from ISO 8859-1
+ * 
+ * Parameters : 
+ * 
+ *	ch - in
+ *		the character
+ *		
+ * Return value : 
+ *      translated character
+ *
+ * Comments : 
+ * 
+ * Globals used : 
+ * 
+ * See also : 
+ */
+int SsChCvtIso2Def(ch)
+	int ch;
+{
+        return (ch);
+}
+
+#else   /* it's not Windows or SOLARIS */
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtDef2Iso
+ * 
+ * See same function above
+ * 
+ * Parameters : 
+ * 
+ *	ch - 
+ *		
+ *		
+ * Return value : 
+ * 
+ * Comments : 
+ * 
+ * Globals used : 
+ * 
+ * See also : 
+ */
+int SsChCvtDef2Iso(ch)
+	int ch;
+{
+        if (ss_chtable_def2iso == NULL) {
+            return (ch);
+        }
+        return (ss_chtable_def2iso[(ss_byte_t)ch]);
+}
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtIso2Def
+ * 
+ * See same function above
+ * 
+ * Parameters : 
+ * 
+ *	ch - 
+ *		
+ *		
+ * Return value : 
+ * 
+ * Comments : 
+ * 
+ * Globals used : 
+ * 
+ * See also : 
+ */
+int SsChCvtIso2Def(ch)
+	int ch;
+{
+        if (ss_chtable_iso2def == NULL) {
+            return (ch);
+        }
+        return (ss_chtable_iso2def[(ss_byte_t)ch]);
+}
+
+#endif  /* !WINDOWS && !SS_NT && !SOLARIS */
+
+
+/*##**********************************************************************\
+ * 
+ *		SsChCvtBuf
+ * 
+ * Copies and converts a character buffer
+ * 
+ * Parameters : 
+ * 
+ *	p_dest - out, use
+ *		destination buffer
+ *		
+ *	p_src - in, use
+ *		source buffer
+ *		
+ *	nbytes - in
+ *		number of bytes to convert
+ *		
+ *	chcvt_table - in, use
+ *		256 byte character translation table
+ *		
+ * Return value : 
+ * 
+ * Comments : 
+ * 
+ * Globals used : 
+ * 
+ * See also :
+ *      destination buffer may overlap with source buffer only if
+ *      destination buffer == source buffer. (like memcpy, not like memmove)
+ *      
+ */
+void SsChCvtBuf(p_dest, p_src, nbytes, chcvt_table)
+        void* p_dest;
+        void* p_src;
+        size_t nbytes;
+        ss_byte_t* chcvt_table;
+{
+        register ss_byte_t* d = p_dest;
+        register ss_byte_t* s = p_src;
+
+        ss_dassert(d != NULL);
+        ss_dassert(s != NULL);
+        ss_dassert(s == d ||
+            (((ulong)s > (ulong)d) ?
+            ((ulong)s - (ulong)d) : ((ulong)d - (ulong)s)) >= (ulong)nbytes);
+
+        if (chcvt_table == NULL) {
+            if (d == s) {
+                return;
+            }
+            memcpy(d, s, (size_t)nbytes);
+            return;
+        }
+        for (;nbytes != 0; d++, s++, nbytes--) {
+            *d = chcvt_table[*s];
+        }
+}
+
+
+
+
+
+
